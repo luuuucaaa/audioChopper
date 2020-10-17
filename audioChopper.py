@@ -10,6 +10,7 @@ Created on Sat Oct 17 18:55:06 2020
 # import libraries
 # =============================================================================
 
+import os
 import numpy as np
 import librosa
 import librosa.display
@@ -82,11 +83,11 @@ audioSlices = []
 # load audio
 # =============================================================================
 
-audio.append(librosa.load('testAudio/Musik.wav', sr = fs))
-audio.append(librosa.load('testAudio/test.wav', sr = fs))
-audio.append(librosa.load('testAudio/test2.wav', sr = fs))
-audio.append(librosa.load('testAudio/test3.wav', sr = fs))
-audio.append(librosa.load('testAudio/test4.wav', sr = fs))
+audio.append(librosa.load('testInputAudio/Musik.wav', sr = fs))
+audio.append(librosa.load('testInputAudio/test.wav', sr = fs))
+audio.append(librosa.load('testInputAudio/test2.wav', sr = fs))
+audio.append(librosa.load('testInputAudio/test3.wav', sr = fs))
+audio.append(librosa.load('testInputAudio/test4.wav', sr = fs))
 
 audio = np.asarray(audio, dtype=object)
 audio = audio[:, 0]
@@ -293,6 +294,9 @@ for i, a in enumerate(audio):
     # write audio
     # =========================================================================
     
+    newpath = './generatedAudioChops' 
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
     if (writeAudioSegments):
         for s in audioSlices:
             segmentID = str(s[1]) + str(s[2]) + str(s[4]) + '0000000000000000000000000000000'
@@ -303,5 +307,5 @@ for i, a in enumerate(audio):
             filename = filename.replace('-', '')
             filename = filename.replace('e', '')
             filename = filename[:30]
-            filename = './cutpointFinder_generatedAudio/' + filename + '.wav'
+            filename = './generatedAudioChops/' + filename + '.wav'
             librosa.output.write_wav(filename, s, fs)
