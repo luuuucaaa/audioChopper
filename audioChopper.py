@@ -25,9 +25,14 @@ from scipy.signal import find_peaks, peak_prominences, peak_widths
 # variabels
 # =============================================================================
 
-# general
+# gui
 zoomFactor = 1 # determines x-axis limit from 0 (1 for full x-axis)
-writeAudioSegments = True
+
+# dynamic variables (experimental)
+dynamicVariables = True # set variables depending on input audio
+
+# write audio
+writeAudioSegments = False
 fadeLength = 100 # fade-in and fade-out in samples
 
 # weightning of features for combinedFeatures (s)
@@ -35,7 +40,7 @@ drmsWeight = 1 # weight of amplitude derivation (rms (root-mean-square) derivati
 dsfmWeight = 1 # weight of tonalness derivation (sfm (spectral-flatness-measure) derivation)
 
 # variables for peak detection in combinedFeatures
-sensitivity = 2 # minimum distance between cutpoints in seconds
+sensitivity = 1 # minimum distance between cutpoints in seconds
 peakHeight = 0.2 # minimum peak height
 deltaThreshold = 0.005 # for finding valleys in front of peaks. good value = 0.005. script iterates from peak values backwards; if (value - previous value < deltaThreshold): break.
 
@@ -83,11 +88,11 @@ audioSlices = []
 # load audio
 # =============================================================================
 
-audio.append(librosa.load('testInputAudio/Musik.wav', sr = fs))
+# audio.append(librosa.load('testInputAudio/Musik.wav', sr = fs))
 audio.append(librosa.load('testInputAudio/test.wav', sr = fs))
 audio.append(librosa.load('testInputAudio/test2.wav', sr = fs))
-audio.append(librosa.load('testInputAudio/test3.wav', sr = fs))
-audio.append(librosa.load('testInputAudio/test4.wav', sr = fs))
+# audio.append(librosa.load('testInputAudio/test3.wav', sr = fs))
+# audio.append(librosa.load('testInputAudio/test4.wav', sr = fs))
 
 audio = np.asarray(audio, dtype=object)
 audio = audio[:, 0]
@@ -158,7 +163,33 @@ for i, a in enumerate(audio):
     if (filterdSfm):
         dsfm = butter_lowpass_filter(dsfm, filterCutoffdSfm, fs, filterOrderdSfm)
         dsfm /= np.amax(np.abs(dsfm))
+        
+          
+    # =========================================================================
+    # input audio analyses for setting variables (experimental)
+    # =========================================================================
     
+    if (dynamicVariables):
+        
+        # get mean positive and mean negative values of drms (root-mean-square derivation)
+        positiveDrmsVals = []
+        negativeDrmsVals = []
+        for i in range(0, len(drms)):
+            if (drms[i] > 0):
+                positiveDrmsVals.append(drms[i])
+            elif (drms[i] < 0):
+                negativeDrmsVals.append(drms[i])
+        positiveDrmsMean = sum(positiveDrmsVals) / len(positiveDrmsVals)  
+        negativeDrmsMean = sum(negativeDrmsVals) / len(negativeDrmsVals)
+        drmsRatio = np.abs(positiveDrmsMean / negativeDrmsMean) # > 1: percussive
+        drmsRatioScalingfactor = drmsRatio - 0.5
+        if (drmsRatioScalingfactor < 0): drmsRatioScalingfactor = 0
+        
+        # set drmsWeight, senitivity and min peak height with drmsRatio as scaling factor
+        sensitivity *= 1 / drmsRatioScalingfactor
+        peakHeight *= drmsRatioScalingfactor
+        drmsWeight *= drmsRatioScalingfactor
+        
     # =========================================================================
     # combine features
     # =========================================================================
@@ -290,22 +321,22 @@ for i, a in enumerate(audio):
             s[i] *= i / fadeLength
             s[-i] *= i / fadeLength
     
-    # =========================================================================
-    # write audio
-    # =========================================================================
-    
-    newpath = './generatedAudioChops' 
-    if not os.path.exists(newpath):
-        os.makedirs(newpath)
-    if (writeAudioSegments):
-        for s in audioSlices:
-            segmentID = str(s[1]) + str(s[2]) + str(s[4]) + '0000000000000000000000000000000'
-            filename = segmentID.replace(' ', '')
-            filename = filename.replace('.', '')
-            filename = filename.replace('[', '')
-            filename = filename.replace(']', '')
-            filename = filename.replace('-', '')
-            filename = filename.replace('e', '')
-            filename = filename[:30]
-            filename = './generatedAudioChops/' + filename + '.wav'
-            librosa.output.write_wav(filename, s, fs)
+# =============================================================================
+# write audio
+# =============================================================================
+   
+newpath = './generatedAudioChops' 
+if not os.path.exists(newpath):
+    os.makedirs(newpath)
+if (writeAudioSegments):
+    for s in audioSlices:
+        segmentID = str(s[1]) + str(s[2]) + str(s[4]) + '0000000000000000000000000000000'
+        filename = segmentID.replace(' ', '')
+        filename = filename.replace('.', '')
+        filename = filename.replace('[', '')
+        filename = filename.replace(']', '')
+        filename = filename.replace('-', '')
+        filename = filename.replace('e', '')
+        filename = filename[:30]
+        filename = './generatedAudioChops/' + filename + '.wav'
+        librosa.output.write_wav(filename, s, fs)
