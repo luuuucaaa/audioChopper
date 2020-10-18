@@ -40,8 +40,8 @@ drmsWeight = 1 # weight of amplitude derivation (rms (root-mean-square) derivati
 dsfmWeight = 1 # weight of tonalness derivation (sfm (spectral-flatness-measure) derivation)
 
 # variables for peak detection in combinedFeatures
-sensitivity = 1 # minimum distance between cutpoints in seconds
-peakHeight = 0.2 # minimum peak height
+sensitivity = 0.8 # minimum distance between cutpoints in seconds
+peakHeight = 0.1 # minimum peak height
 deltaThreshold = 0.005 # for finding valleys in front of peaks. good value = 0.005. script iterates from peak values backwards; if (value - previous value < deltaThreshold): break.
 
 # audio filter
@@ -88,11 +88,11 @@ audioSlices = []
 # load audio
 # =============================================================================
 
-# audio.append(librosa.load('testInputAudio/Musik.wav', sr = fs))
+audio.append(librosa.load('testInputAudio/Musik.wav', sr = fs))
 audio.append(librosa.load('testInputAudio/test.wav', sr = fs))
 audio.append(librosa.load('testInputAudio/test2.wav', sr = fs))
-# audio.append(librosa.load('testInputAudio/test3.wav', sr = fs))
-# audio.append(librosa.load('testInputAudio/test4.wav', sr = fs))
+audio.append(librosa.load('testInputAudio/test3.wav', sr = fs))
+audio.append(librosa.load('testInputAudio/test4.wav', sr = fs))
 
 audio = np.asarray(audio, dtype=object)
 audio = audio[:, 0]
@@ -170,6 +170,11 @@ for i, a in enumerate(audio):
     # =========================================================================
     
     if (dynamicVariables):
+        
+        # loading variables in buffer for reset after one iteration
+        originalSensitivity = sensitivity
+        originalPeakHeight = peakHeight
+        originalDrmsWeight = drmsWeight
         
         # get mean positive and mean negative values of drms (root-mean-square derivation)
         positiveDrmsVals = []
@@ -320,6 +325,14 @@ for i, a in enumerate(audio):
         for i in range(0, fadeLength):
             s[i] *= i / fadeLength
             s[-i] *= i / fadeLength
+            
+    # =========================================================================
+    # reset variables
+    # =========================================================================
+            
+    sensitivity = originalSensitivity
+    peakHeight = originalPeakHeight
+    drmsWeight = originalDrmsWeight
     
 # =============================================================================
 # write audio
