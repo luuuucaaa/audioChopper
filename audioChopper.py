@@ -29,10 +29,10 @@ from scipy.signal import find_peaks, peak_prominences, peak_widths
 zoomFactor = 1 # determines x-axis limit from 0 (1 for full x-axis)
 
 # dynamic variables (experimental)
-dynamicVariables = True # set variables depending on input audio
+dynamicVariables = True # set scaling factors for variables like sensitivity, drmsWeight, peakHeight based on input audio
 
 # write audio
-writeAudioSegments = False
+writeAudioSegments = True
 fadeLength = 100 # fade-in and fade-out in samples
 
 # weightning of features for combinedFeatures (s)
@@ -296,7 +296,7 @@ for i, a in enumerate(audio):
     plt.figure(figsize = (figureWidth, figureHeight / 2))
     
     plt.title('Waveform')
-    plt.plot(time, a)
+    pk = plt.plot(time, a)
     plt.vlines(cutpointSeconds, -1.05, 1.05, color='red', linestyle='solid')
     plt.xlim(0, time[-1] * zoomFactor)
     plt.ylim(-1.05, 1.05)
@@ -335,6 +335,63 @@ for i, a in enumerate(audio):
     drmsWeight = originalDrmsWeight
     
 # =============================================================================
+# analyse audio segments for categorization (doesnt really work . . .)
+# =============================================================================
+    
+audioSlicesFilenames = []
+    
+for s in audioSlices:
+    
+    # rms
+    rmsSlice = librosa.feature.rms(s, frame_length=frameLength, hop_length=hopLength, center=True)
+    rmsSlice = rmsSlice[0]
+    rmsSlice /= np.amax(np.abs(rmsSlice))
+    
+    # rms derivation
+    dxrmsSlice = 1
+    drmsSlice = diff(rmsSlice) / dxrmsSlice
+    drmsSlice /= np.amax(np.abs(drmsSlice))
+    
+    # spectral flatness
+    S, phase = librosa.magphase(librosa.stft(s))
+    sfmSlice = librosa.feature.spectral_flatness(S=S, hop_length=256)
+    sfmSlice = sfmSlice[0]
+    np.interp(sfmSlice, (sfmSlice.min(), sfmSlice.max()), (0, 1))
+    sfmSlice /= np.amax(np.abs(sfmSlice))
+    
+    # get mean positive and mean negative values of drms (root-mean-square derivation)
+    positiveDrmsValsSlice = []
+    negativeDrmsValsSlice = []
+    for i in range(0, len(drmsSlice)):
+        if (drmsSlice[i] > 0):
+            positiveDrmsValsSlice.append(drmsSlice[i])
+        elif (drmsSlice[i] < 0):
+            negativeDrmsValsSlice.append(drmsSlice[i])
+            
+    if (len(positiveDrmsValsSlice) == 0):
+        positiveDrmsMeanSlice = 1000
+    else:
+        positiveDrmsMeanSlice = sum(positiveDrmsValsSlice) / len(positiveDrmsValsSlice)  
+
+    if (len(negativeDrmsValsSlice) == 0):
+        negativeDrmsMeanSlice = 1000
+    else:
+        negativeDrmsMeanSlice = sum(negativeDrmsValsSlice) / len(negativeDrmsValsSlice)
+    
+    drmsRatioSlice = np.abs(positiveDrmsMeanSlice / negativeDrmsMeanSlice) # > 1: percussive
+    drmsRatioSliceFactor = (2 / np.pi) * np.arctan(drmsRatioSlice) # scale value between 0 and 1
+    drmsRatioSliceFactor = round(drmsRatioSliceFactor, 6)
+    
+    # get mean of sfm
+    sfmSliceFactor = sum(sfmSlice) / len(sfmSlice)
+    sfmSliceFactor = round(sfmSliceFactor, 6)
+    
+    # build filname
+    filename = 'dRMS-' + str(drmsRatioSliceFactor) + '_SFM-' + str(sfmSliceFactor)
+    filename = filename.replace('.', '')
+    audioSlicesFilenames.append(filename)
+    
+# =============================================================================
 # write audio
 # =============================================================================
    
@@ -342,14 +399,6 @@ newpath = './generatedAudioChops'
 if not os.path.exists(newpath):
     os.makedirs(newpath)
 if (writeAudioSegments):
-    for s in audioSlices:
-        segmentID = str(s[1]) + str(s[2]) + str(s[4]) + '0000000000000000000000000000000'
-        filename = segmentID.replace(' ', '')
-        filename = filename.replace('.', '')
-        filename = filename.replace('[', '')
-        filename = filename.replace(']', '')
-        filename = filename.replace('-', '')
-        filename = filename.replace('e', '')
-        filename = filename[:30]
-        filename = './generatedAudioChops/' + filename + '.wav'
-        librosa.output.write_wav(filename, s, fs)
+    for i, s in enumerate(audioSlices):
+        path = './generatedAudioChops/' + audioSlicesFilenames[i] + '.wav'
+        librosa.output.write_wav(path, s, fs)
