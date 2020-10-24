@@ -122,7 +122,7 @@ def ear_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
     return y
 
 def rectification(datafft):
-    # data: 1D array of 1 channel frequency domain data series
+    # datafft: 1D array of 1 channel frequency domain data series
     
     # calculate time signal of impulse response
     data = np.fft.ifft(datafft)
