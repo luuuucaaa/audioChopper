@@ -50,9 +50,14 @@ def init_ear_filter(fs=48000):
     H = 20 * np.log10(abs(h))
 
     # output
+    # B: 1D array of filter b-coefficients
+    # A: 1D array of filter a-coefficients
+    # f: 1D array of frequency-values
+    # H: 1D array of dB-values
     return B, A, f, H
 
 def ear_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
+    # data: 1D array of 1 channel time domain data series
 
     # initialize ear filter
     B, A, f, H = init_ear_filter(fs)
@@ -91,7 +96,7 @@ def ear_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
         # plot time domain signal
         plt.subplot(2, 1, 1)
         plt.plot(ny, y, linewidth=0.5)
-        plt.title('Time Signal of of Evaluation-Signal (ear filtered)')
+        plt.title('Time Signal of Evaluation-Signal (ear filtered)')
         plt.xlabel('Samples')
         plt.ylabel('Amplitude [dB]')
         plt.grid(which='both', linestyle='-', color='#cccccc')
@@ -113,9 +118,11 @@ def ear_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
         plt.show()
 
     # output
+    # y: 1D array of 1 channel time domain data series
     return y
 
 def rectification(datafft):
+    # data: 1D array of 1 channel frequency domain data series
     
     # calculate time signal of impulse response
     data = np.fft.ifft(datafft)
@@ -134,9 +141,11 @@ def rectification(datafft):
     y *= 2
     
     # output
+    # y: 1D array of 1 channel frequency domain data series
     return y
 
 def segmentation(data, calculateRms=False):
+    # data: 2D array of 53 channel time domain data series
     
     # define block and hop lengths for segmentation
     blockLength = [8192, 4096, 2048, 1024]
@@ -348,6 +357,8 @@ def segmentation(data, calculateRms=False):
         rmsBank = np.asarray(rmsBank, dtype=object)
     
     # output
+    # segmentBank: 3D array of 53 channel time domain data series, segmented into blocks
+    # rmsBank: 2D array of 53 channel rms values
     if (calculateRms):
         return segmentBank, rmsBank
     else:
@@ -430,9 +441,14 @@ def init_auditory_filterbank(order=5, fs=48000, rectificate=True):
         sosFilterbank.append(sos)
 
     # output
+    # sosFilterbank: 1D array of filter sos-coefficients for each bandpass filter
+    # fm: 1D array of middle frequencies for each bandpass filter
+    # f: 1D array of frequencies for plotting
+    # H: 2D array of dB-values for each bandpass filter 
     return sosFilterbank, fm, f, H
 
 def auditory_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
+    # data: 1D array of 1 channel time domain data series
 
     # initialize ear filter
     sosFilterbank, fm, f, H = init_auditory_filterbank()
@@ -591,4 +607,7 @@ def auditory_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
         plt.show()
 
     # output
+    # y: 2D array of 53 channel time domain data series
+    # perceivedLoudnessBank: 2D array of 53 channel perceived loudness values
     return y, perceivedLoudnessBank
+    
