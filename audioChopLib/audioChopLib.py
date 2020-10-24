@@ -13,6 +13,71 @@ import matplotlib.pyplot as plt
 # define functions
 # =============================================================================
 
+def rectification(data):
+    # data: 1D array of 1 channel time domain data series
+    
+    # rectification loop
+    for i in range(len(data)):
+        if (data[i] > 0):
+            data[i] = data[i]
+        elif (data[i] <= 0):
+            data[i] = 0
+
+    # factoring frequency response for compensating energy loss through rectification
+    y = data * 2
+    
+    # output
+    # y: 1D array of 1 channel time domain data series
+    return y
+
+def segmentation(data, blockLength, hopLength):
+    # data: 1D array of 1 channel time or frequency domain data series
+    # blockLength: int of block length in samples
+    # hopLength: int of hop length in samples
+    
+    # get length of data
+    length = len(data)
+    
+    # initialize output array
+    y = []
+    
+    # intialize index
+    i = 0
+    
+    # segmentation loop
+    while (i * hopLength < length):
+
+        # set start of segment
+        start = i * hopLength
+
+        # set end of segment
+        end = i * hopLength + blockLength
+        if (end > length - 1):
+            end = length - 1
+
+        # get segment
+        segment = data[start:end]
+        
+        # append segment to output array
+        y.append(segment)
+
+        # raise index
+        i += 1
+        
+    # output
+    # y: 2D array of segmented data series
+    return y
+
+def rms_calculation(data):
+    # data: 1D array of 1 channel time data series
+    
+    # calculate rms value of segment
+    y = np.sqrt(np.mean(np.abs(data) ** 2, axis=0, keepdims=True))
+    
+    # output
+    # y: float of rms value
+    return y
+
 def init_ear_filter(fs=48000):
 
     # b-coefficients of ear filter
@@ -121,249 +186,6 @@ def ear_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
     # y: 1D array of 1 channel time domain data series
     return y
 
-def rectification(datafft):
-    # datafft: 1D array of 1 channel frequency domain data series
-    
-    # calculate time signal of impulse response
-    data = np.fft.ifft(datafft)
-
-    # rectification loop
-    for i in range(len(data)):
-        if (data[i] > 0):
-            data[i] = data[i]
-        elif (data[i] <= 0):
-            data[i] = 0
-
-    # calculate impulse response from time signal
-    y = np.fft.fft(data)
-
-    # factoring frequency response for compensating energy loss through rectification
-    y *= 2
-    
-    # output
-    # y: 1D array of 1 channel frequency domain data series
-    return y
-
-def segmentation(data, calculateRms=False):
-    # data: 2D array of 53 channel time domain data series
-    
-    # define block and hop lengths for segmentation
-    blockLength = [8192, 4096, 2048, 1024]
-    hopLength = [2048, 1024, 512, 256]
-    
-    # initialize array for segments which will be returned for further calculations
-    segmentBank = []
-
-    if (calculateRms):
-        # initialize array for band-specific root-mean-square (RMS) values
-        rmsBank = []
-
-    # calculation loop for band-specific root-mean-square (RMS) values
-    for i in range(len(data)):
-
-        # get length of time signal
-        length = len(data[i])
-
-        # band-specific segmentation of time signals
-        if (i < 3):
-
-            # initialize index
-            index = 0
-
-            # initialize sub-array for segments
-            segmentBank2048 = []
-
-            if (calculateRms):
-                # initialize sub-array for band-specific root-mean-square (RMS) values
-                rmsBank2048 = []
-
-            # segmentation loop
-            while (index * hopLength[0] < length):
-
-                # set start of segment
-                start = index * hopLength[0]
-
-                # set end of segment
-                end = index * hopLength[0] + blockLength[0]
-                if (end > length - 1):
-                    end = length - 1
-
-                # get segment
-                segment = data[i][start:end]
-                
-                # append segment to segment bank
-                segmentBank2048.append(segment)
-
-                if (calculateRms):
-                    # calculate rms value of segment
-                    rms = np.sqrt(np.mean(np.abs(segment) ** 2, axis=0, keepdims=True))
-    
-                    # append rms value to rms sub-array
-                    rmsBank2048.append(rms)
-
-                # raise index
-                index += 1
-                
-            # append segment sub-array to segment array
-            segmentBank.append(segmentBank2048)
-
-            if (calculateRms):
-                # append rms sub-array to rms array
-                rmsBank.append(rmsBank2048)
-
-        elif (i >= 3 and i < 16):
-
-            # initialize index
-            index = 0
-
-            # initialize sub-array for segments
-            segmentBank1024 = []
-
-            if (calculateRms):
-                # initialize sub-array for band-specific root-mean-square (RMS) values
-                rmsBank1024 = []
-
-            # segmentation loop
-            while (index * hopLength[1] < length):
-
-                # set start of segment
-                start = index * hopLength[1]
-
-                # set end of segment
-                end = index * hopLength[1] + blockLength[1]
-                if (end > length - 1):
-                    end = length - 1
-
-                # get segment
-                segment = data[i][start:end]
-                
-                # append segment to segment bank
-                segmentBank1024.append(segment)
-
-                if (calculateRms):
-                    # calculate rms value of segment
-                    rms = np.sqrt(np.mean(np.abs(segment) ** 2, axis=0, keepdims=True))
-    
-                    # append rms value to rms bank
-                    rmsBank1024.append(rms)
-
-                # raise index
-                index += 1
-                
-            # append segment sub-array to segment array
-            segmentBank.append(segmentBank1024)
-
-            if (calculateRms):
-                # append rms sub-array to rms array
-                rmsBank.append(rmsBank1024)
-
-        elif (i >= 16 and i < 25):
-
-            # initialize index
-            index = 0
-
-            # initialize sub-array for segments
-            segmentBank512 = []
-
-            if (calculateRms):
-                # initialize sub-array for band-specific root-mean-square (RMS) values
-                rmsBank512 = []
-
-            # segmentation loop
-            while (index * hopLength[2] < length):
-
-                # set start of segment
-                start = index * hopLength[2]
-
-                # set end of segment
-                end = index * hopLength[2] + blockLength[2]
-                if (end > length - 1):
-                    end = length - 1
-
-                # get segment
-                segment = data[i][start:end]
-                
-                # append segment to segment bank
-                segmentBank512.append(segment)
-
-                if (calculateRms):
-                    # calculate rms value of segment
-                    rms = np.sqrt(np.mean(np.abs(segment) ** 2, axis=0, keepdims=True))
-    
-                    # append rms value to rms bank
-                    rmsBank512.append(rms)
-
-                # raise index
-                index += 1
-                
-            # append segment sub-array to segment array
-            segmentBank.append(segmentBank512)
-
-            if (calculateRms):
-                # append rms sub-array to rms array
-                rmsBank.append(rmsBank512)
-
-        else:
-
-            # initialize index
-            index = 0
-
-            # initialize sub-array for segments
-            segmentBank256 = []
-
-            if (calculateRms):
-                # initialize sub-array for band-specific root-mean-square (RMS) values
-                rmsBank256 = []
-
-            # segmentation loop
-            while (index * hopLength[3] < length):
-
-                # set start of segment
-                start = index * hopLength[3]
-
-                # set end of segment
-                end = index * hopLength[3] + blockLength[3]
-                if (end > length - 1):
-                    end = length - 1
-
-                # get segment
-                segment = data[i][start:end]
-                
-                # append segment to segment bank
-                segmentBank256.append(segment)
-
-                if (calculateRms):
-                    # calculate rms value of segment
-                    rms = np.sqrt(np.mean(np.abs(segment) ** 2, axis=0, keepdims=True))
-    
-                    # append rms value to rms bank
-                    rmsBank256.append(rms)
-
-                # raise index
-                index += 1
-                
-            # append segment sub-array to segment array
-            segmentBank.append(segmentBank2048)
-
-            if (calculateRms):
-                # append rms sub-array to rms array
-                rmsBank.append(rmsBank256)
-        
-    # transform list to array for further calculations
-    segmentBank = np.asarray(segmentBank, dtype=object)
-
-    if (calculateRms):
-        # transform list to array for further calculations
-        rmsBank = np.asarray(rmsBank, dtype=object)
-    
-    # output
-    # segmentBank: 3D array of 53 channel time domain data series, segmented into blocks
-    # rmsBank: 2D array of 53 channel rms values
-    if (calculateRms):
-        return segmentBank, rmsBank
-    else:
-        return segmentBank
-
 def init_auditory_filterbank(order=5, fs=48000, rectificate=True):
 
     # calculate nyquist-frequency
@@ -429,7 +251,15 @@ def init_auditory_filterbank(order=5, fs=48000, rectificate=True):
 
         # rectify bandpass signal
         if (rectificate):
-            rectification(h)
+            
+            # calculate time domain signal from frequency domain signal
+            hn = np.fft.ifft(h)
+            
+            # rectify time domain signal
+            hn = rectification(hn)
+            
+            # calculate frequency domain signal from time domain signal
+            h = np.fft.fft(hn)
             
         # calculate dB-values H from absolute values h
         H_ = 20 * np.log10(abs(h))
@@ -489,9 +319,87 @@ def auditory_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
     # scale frequency array from values between 0 and 1  to values between 0 and fs
     nyfft *= fs
     
-    # segmentation and rms calculation
-    segmentBank, rmsBank = segmentation(y, calculateRms=True)
+    # define block and hop lengths for segmentation
+    blockLength = [8192, 4096, 2048, 1024]
+    hopLength = [2048, 1024, 512, 256]
+    
+    # initialize array of segments
+    segmentBank = []
+    
+    # initialize array of root-mean-square values of each segment
+    rmsBank = []
+    
+    # segmentation loop
+    for i in range(len(y)):
         
+        # initialize sub-array of root-mean-square values of each segment
+        rmsBank_ = []
+        
+        # segmentation for block length of 8192 and hop length 2084
+        if (i < 3):
+            
+            # segmentation
+            segmentBank_ = segmentation(y[i], blockLength[0], hopLength[0])
+    
+            # append segments to array of segments
+            segmentBank.append(segmentBank_)
+            
+            # rms calculation loop
+            for i in range(len(segmentBank_)):
+                rmsBank__ = rms_calculation(segmentBank_[i])
+                rmsBank_.append(rmsBank__)
+            
+        # segmentation for block length of 4096 and hop length 1024
+        elif (i >= 3 and i < 16):
+            
+            # segmentation
+            segmentBank_ = segmentation(y[i], blockLength[1], hopLength[1])
+    
+            # append segments to array of segments
+            segmentBank.append(segmentBank_)
+            
+            # rms calculation loop
+            for i in range(len(segmentBank_)):
+                rmsBank__ = rms_calculation(segmentBank_[i])
+                rmsBank_.append(rmsBank__)
+            
+        # segmentation for block length of 2048 and hop length 512
+        elif (i >= 16 and i < 25):
+            
+            # segmentation
+            segmentBank_ = segmentation(y[i], blockLength[2], hopLength[2])
+    
+            # append segments to array of segments
+            segmentBank.append(segmentBank_)
+            
+            # rms calculation loop
+            for i in range(len(segmentBank_)):
+                rmsBank__ = rms_calculation(segmentBank_[i])
+                rmsBank_.append(rmsBank__)
+            
+        # segmentation for block length of 1024 and hop length 256
+        else:
+            
+            # segmentation
+            segmentBank_ = segmentation(y[i], blockLength[3], hopLength[3])
+    
+            # append segments to array of segments
+            segmentBank.append(segmentBank_)
+            
+            # rms calculation loop
+            for i in range(len(segmentBank_)):
+                rmsBank__ = rms_calculation(segmentBank_[i])
+                rmsBank_.append(rmsBank__)
+            
+        # append rms sub-array value to rms array
+        rmsBank.append(rmsBank_)
+    
+    # transform list to array for further calculations
+    segmentBank = np.asarray(segmentBank, dtype=object)
+    
+    # transform list to array for further calculations
+    rmsBank = np.asarray(rmsBank, dtype=object)
+    
     # sound pressure reference value
     p0 = 0.00002
 
@@ -610,4 +518,3 @@ def auditory_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
     # y: 2D array of 53 channel time domain data series
     # perceivedLoudnessBank: 2D array of 53 channel perceived loudness values
     return y, perceivedLoudnessBank
-    
