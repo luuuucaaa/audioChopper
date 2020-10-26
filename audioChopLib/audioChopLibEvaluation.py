@@ -9,6 +9,8 @@ from audioChopLib import *
 
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+from scipy.io import wavfile
 
 # =============================================================================
 # create test audio
@@ -39,7 +41,7 @@ for i in range(len(z)):
     fsin[i] = (dfb / c) * np.sinh(c * z[i])
 
 # define length of sine signals
-lsin = 2 * fs
+lsin = int(2 * fs)
 
 # create sample number array for sine signals
 nsin = np.arange(0, lsin, 1)
@@ -119,8 +121,18 @@ plt.show()
 # evaluate library functions
 # =============================================================================
 
-# filter evaluation signal with ear filter
-sinEarFilter = ear_filter(sin, plot=True)
+test = wavfile.read('./Musik.wav')
+test = test[1]
 
-# filter evaluation signal with auditory filter
-sinAuditoryFilter, sinPerceivedLoudness = auditory_filter(sinEarFilter, plot=True)
+start_time = time.time()
+
+# # filter evaluation signal with ear filter
+# sinEarFilter = ear_filter(sin, plot=True)
+
+# # filter evaluation signal with auditory filter
+# sinAuditoryFilter, sinPerceivedLoudness = auditory_filter(sinEarFilter, plot=True)
+
+# # calculate autocorrelation function
+# sinAutocorrelation, sinAutocorrelationFFT = autocorrelation(sinAuditoryFilter, fsin, plot=True)
+
+print("--- %s seconds ---" % (time.time() - start_time))

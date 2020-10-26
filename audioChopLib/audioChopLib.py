@@ -7,6 +7,7 @@
 
 import numpy as np
 from scipy import signal
+from random import randrange
 import matplotlib.pyplot as plt
 
 # =============================================================================
@@ -518,3 +519,262 @@ def auditory_filter(data, fs=48000, plot=False, figWidth=20, figHeight=14):
     # y: 2D array of 53 channel time domain data series
     # perceivedLoudnessBank: 2D array of 53 channel perceived loudness values
     return y, perceivedLoudnessBank
+    
+# the original autocorrelation function from the ecma-74 standard.
+# computing time is way too much, so its unused
+def autocorrelation_function(data):
+    # data: 1D array of 1 channel time domain data series
+    
+    # initialize correlation function array
+    y = np.zeros(len(data))
+    
+    # define lags
+    lags = len(data)
+        
+    for i in range(lags):
+        
+        # calulate term1 of autocorrelation function
+        term1 = (1 / len(data))
+        
+        # initialize term2 of autocorrelation function
+        term2 = 0
+        
+        # calulate term2 of autocorrelation function
+        for j in range(len(data)):
+            term2 += data[j] ** 2
+            
+        # initialize term3, subterm31 and subterm32 of autocorrelation function
+        term3 = 0
+        subterm31 = 0
+        subterm32 = 0
+        
+        # calulate subterm31 and subterm32 of autocorrelation function
+        for k in range(len(data) - i):
+            subterm31 += data[k] ** 2
+            subterm32 += data[k + i] ** 2
+            
+        # calulate term3 of autocorrelation function
+        term3 = np.sqrt(subterm31 * subterm32)
+        
+        # initialize term4 of autocorrelation function
+        term4 = 0
+        
+        # calulate term2 of autocorrelation function
+        for l in range(len(data) - i):
+            term4 += data[l] * data[l + i]
+            
+        # calulate autocorrelation function of segment
+        y[i] = term1 * (term2 / term3) * term4
+        
+    # calculate frequency domain autocorrelation function
+    yfft = np.fft.fft(y)
+    
+    # output
+    # y: 1D array of 1 channel time domain data series (autocorrelation function)
+    return y, yfft
+
+def bitstream_autocorrelation_function(data):
+    # data: 1D array of 1 channel time domain data series
+    
+    # define number of lags
+    lags = len(data)
+    
+    # initialize output array
+    y = np.zeros(len(data))
+    
+    # initialize bitstream array
+    yb = np.zeros(len(y))
+    
+    # bitstream calculation loop
+    for i in range(len(y)):
+        if (data[i] > 0.1):
+            yb[i] = 1
+        elif (data[i] < -0.1):
+            yb[i] = 0
+            
+    # copy bitstream for autocorrelation
+    yb_ = yb
+    
+    # convert array of floats to array of ints
+    yb_ = yb_.astype(int)
+    yb = yb.astype(int)
+            
+    # autocorrelation calculation loop
+    for i in range(lags):
+        y_ = 0
+        y__ = [a ^ b for a, b in zip(yb[0:lags], yb_[i:i + lags])]
+        for one in y__:
+            if one:
+                y_ += 1
+        y[i] = y_
+    
+    # print statement
+    print('Autocorrelation done!')
+    
+    # output
+    # y: 1D array of 1 channel time domain data series (autocorrelation function)
+    # yfft: 1D array of 1 channel frequency domain data series (autocorrelation function)
+    return y
+    
+def autocorrelation(data, fm, fs=48000, plot=False, figWidth=20, figHeight=14):
+    # data: 2D array of 53 channel time domain data series
+    # fm: middle frequencies of channels
+    
+    # define block and hop lengths for segmentation
+    blockLength = [8192, 4096, 2048, 1024]
+    hopLength = [2048, 1024, 512, 256]
+    
+    # initialize array of segments
+    segmentBank = []
+    
+    # initialize array of time domain autocorrelation functions
+    y = []
+    
+    # initialize array of frequency domain autocorrelation functions
+    yfft = []
+    
+    # segmentation loop
+    for i in range(len(data)):
+        
+        # initialize sub-array of time domain autocorrelation functions
+        y_ = []
+        
+        # initialize sub-array of frequency domain autocorrelation functions
+        yfft_ = []
+        
+        # segmentation for block length of 8192 and hop length 2084
+        if (i < 3):
+            
+            # segmentation
+            segmentBank_ = segmentation(data[i], blockLength[0], hopLength[0])
+    
+            # append segments to array of segments
+            segmentBank.append(segmentBank_)
+            
+            # autocorrelation function calculation loop
+            for i in range(len(segmentBank_)):
+                y__ = bitstream_autocorrelation_function(segmentBank_[i])
+                y_.append(y__)
+                yfft__ = np.fft.fft(y__)
+                yfft_.append(yfft__)
+            
+            # append to sub-arrays
+            y.append(y_)
+            yfft.append(yfft_)
+            
+        # segmentation for block length of 4096 and hop length 1024
+        elif (i >= 3 and i < 16):
+            
+            # segmentation
+            segmentBank_ = segmentation(data[i], blockLength[1], hopLength[1])
+    
+            # append segments to array of segments
+            segmentBank.append(segmentBank_)
+            
+            # autocorrelation function calculation loop
+            for i in range(len(segmentBank_)):
+                y__ = bitstream_autocorrelation_function(segmentBank_[i])
+                y_.append(y__)
+                yfft__ = np.fft.fft(y__)
+                yfft_.append(yfft__)
+            
+            # append to sub-arrays
+            y.append(y_)
+            yfft.append(yfft_)
+            
+        # segmentation for block length of 2048 and hop length 512
+        elif (i >= 16 and i < 25):
+            
+            # segmentation
+            segmentBank_ = segmentation(data[i], blockLength[2], hopLength[2])
+    
+            # append segments to array of segments
+            segmentBank.append(segmentBank_)
+            
+            # autocorrelation function calculation loop
+            for i in range(len(segmentBank_)):
+                y__ = bitstream_autocorrelation_function(segmentBank_[i])
+                y_.append(y__)
+                yfft__ = np.fft.fft(y__)
+                yfft_.append(yfft__)
+            
+            # append to sub-arrays
+            y.append(y_)
+            yfft.append(yfft_)
+            
+        # segmentation for block length of 1024 and hop length 256
+        else:
+            
+            # segmentation
+            segmentBank_ = segmentation(data[i], blockLength[3], hopLength[3])
+    
+            # append segments to array of segments
+            segmentBank.append(segmentBank_)
+            
+            # autocorrelation function calculation loop
+            for i in range(len(segmentBank_)):
+                y__ = bitstream_autocorrelation_function(segmentBank_[i])
+                y_.append(y__)
+                yfft__ = np.fft.fft(y__)
+                yfft_.append(yfft__)
+            
+            # append to sub-arrays
+            y.append(y_)
+            yfft.append(yfft_)
+                
+    # plot
+    if (plot):
+        
+        # get a random example to plot
+        i = randrange(len(y))
+        j = randrange(len(y[i]))
+        channel = str(i)
+        segment = str(j)
+        
+        # normalize signals
+        y[i][j] /= np.amax(np.abs(y[i][j]))
+        yfft[i][j] /= np.amax(np.abs(yfft[i][j]))
+        
+        # create sample array for data
+        ny = np.arange(0, len(y[i][j]), 1)
+        
+        # calculate dB-values from absolute values of frequency domain signal
+        Hyfft = 20 * np.log10(abs(yfft[i][j]))
+        
+        # calculate frequency array from sample array
+        nyfft = np.fft.fftfreq(ny.shape[-1])
+        
+        # scale frequency array from values between 0 and 1  to values between 0 and fs
+        nyfft *= fs
+        
+        # create plot
+        plt.figure(figsize = (figWidth, figHeight))
+        plt.subplots_adjust(hspace=0.2)
+        
+        # plot time domain signal
+        plt.subplot(2, 1, 1)
+        plt.plot(ny, y[i][j], linewidth=0.5)
+        plt.title('Time Signal of Autocorrelation-Signal of Channel ' + channel + ', Segment ' + segment)
+        plt.xlabel('Samples')
+        plt.ylabel('Amplitude [dB]')
+        plt.grid(which='both', linestyle='-', color='#cccccc')
+        plt.xlim([0, len(ny)])
+        plt.ylim([-1.05, 1.05])
+        
+        # plot time frequency signal
+        plt.subplot(2, 1, 2)
+        plt.title('Frequency Response of Autocorrelation-Signal of Channel ' + channel + ', Segment ' + segment)
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Amplitude [dB]')
+        plt.semilogx(nyfft, Hyfft)
+        plt.vlines(fm[i], -30, 5, linestyle='--', linewidth=0.5, color='red')
+        plt.grid(which='both', linestyle='-', color='#cccccc')
+        plt.xlim([20, 20000])
+        plt.xticks([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000], ["20", "50", "100", "200", "500", "1k", "2k", "5k", "10k", "20k"])
+        plt.ylim([-30, 5])
+        plt.show()
+    
+    # output
+    # y: 2D array of 53 channel time domain data series (autocorrelation function)
+    # yfft: 2D array of 53 channel frequency domain data series (autocorrelation function)
+    return y, yfft
